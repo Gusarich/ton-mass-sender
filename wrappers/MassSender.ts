@@ -9,6 +9,7 @@ import {
     DictionaryValue,
     Sender,
     SendMode,
+    toNano,
 } from 'ton-core';
 
 export type Msg = {
@@ -51,7 +52,7 @@ export class MassSender implements Contract {
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
         await provider.internal(via, {
-            value,
+            value: value + this.init!.data.beginParse().loadUintBig(8) * toNano('0.1'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: Cell.EMPTY,
         });

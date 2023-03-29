@@ -1,9 +1,10 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton-community/sandbox';
 import { Address, Cell, toNano } from 'ton-core';
-import { MassSender } from '../wrappers/MassSender';
+import { MassSender, Msg } from '../wrappers/MassSender';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { randomAddress } from '@ton-community/test-utils';
+import { randomInt } from 'crypto';
 
 describe('MassSender', () => {
     let code: Cell;
@@ -35,7 +36,7 @@ describe('MassSender', () => {
                 code
             )
         );
-        const result = await massSender.sendDeploy(deployer.getSender(), toNano('1.11'));
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('1'));
         expect(result.transactions).toHaveTransaction({
             from: deployer.address,
             to: massSender.address,
@@ -74,6 +75,65 @@ describe('MassSender', () => {
                 value: toNano(i + 1),
             });
         }
+        expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+    });
+
+    it('should send message 254 times', async () => {
+        async function sendMessage(msg: Msg) {
+            let massSender = blockchain.openContract(
+                MassSender.createFromConfig(
+                    {
+                        messages: [msg],
+                    },
+                    code
+                )
+            );
+            const result = await massSender.sendDeploy(deployer.getSender(), msg.value);
+            expect(result.transactions).toHaveTransaction({
+                from: deployer.address,
+                to: massSender.address,
+                success: true,
+            });
+            expect(result.transactions).toHaveTransaction({
+                from: massSender.address,
+                to: msg.destination,
+                value: msg.value,
+            });
+            expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        }
+
+        for (let i = 0; i < 254; ++i) {
+            await sendMessage({
+                destination: randomAddresses[i],
+                value: toNano(randomInt(1, 100)),
+            });
+        }
+    });
+
+    it('should revert on not enough value', async () => {
+        let massSender = blockchain.openContract(
+            MassSender.createFromConfig(
+                {
+                    messages: randomAddresses.map((addr, idx) => ({
+                        destination: addr,
+                        value: toNano(idx + 1),
+                    })),
+                },
+                code
+            )
+        );
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('32300'));
+        expect(result.transactions).toHaveLength(3);
+        expect(result.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: massSender.address,
+            success: false,
+        });
+        expect(result.transactions).toHaveTransaction({
+            from: massSender.address,
+            to: deployer.address,
+            inMessageBounced: true,
+        });
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
     });
 });

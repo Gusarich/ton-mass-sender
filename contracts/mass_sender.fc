@@ -1,5 +1,7 @@
 #include "imports/stdlib.fc";
 
+const int ton_for_fee = 100000000;
+
 () send_transfer(slice dest, int value) impure inline {
     send_raw_message(begin_cell()
         .store_uint(0x10, 6)
@@ -28,14 +30,16 @@
     int length = ds~load_uint(8);
     cell messages = ds~load_dict();
 
+    int total = 0;
     int index = 0;
     repeat (length) {
         (slice msg, int f?) = messages.udict_get?(8, index);
         slice dest = msg~load_msg_addr();
         int value = msg~load_coins();
         send_transfer(dest, value);
+        total += value;
         index += 1;
     }
-
+    throw_if(101, total > msg_value - ton_for_fee * length);
     send_excesses(sender);
 }

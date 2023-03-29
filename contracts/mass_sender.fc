@@ -1,6 +1,8 @@
 #include "imports/stdlib.fc";
 
 const int op::send = 0x2883b930;
+const int ton_for_fee = 100000000;
+const int ton_for_msg = 10000000;
 
 () send_transfer(slice dest, int value) impure inline {
     send_raw_message(begin_cell()
@@ -8,7 +10,7 @@ const int op::send = 0x2883b930;
         .store_slice(dest)
         .store_coins(value)
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    .end_cell(), 3);
+    .end_cell(), 1);
 }
 
 () send_excesses(slice dest) impure inline {
@@ -24,14 +26,21 @@ const int op::send = 0x2883b930;
     slice cs = in_msg_full.begin_parse();
     int flags = cs~load_uint(4);
     slice sender = cs~load_msg_addr();
+
     if ((flags & 1) | (in_msg_body.slice_bits() < 32)) {
         return ();
     }
 
     int op = in_msg_body~load_uint(32);
+
     if (op == op::send) {
         int length = in_msg_body~load_uint(8);
         cell messages = in_msg_body~load_dict();
+
+        msg_value -= ton_for_fee + ton_for_msg * length;
+        throw_if(102, msg_value < 0);
+
+        int total = 0;
         int index = 0;
         repeat (length) {
             (slice msg, int f?) = messages.udict_get?(8, index);
@@ -39,8 +48,10 @@ const int op::send = 0x2883b930;
             slice dest = msg~load_msg_addr();
             int value = msg~load_coins();
             send_transfer(dest, value);
+            total += value;
             index += 1;
         }
+        throw_if(103, total > msg_value);
         send_excesses(sender);
     }
 }

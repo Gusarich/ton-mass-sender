@@ -6,18 +6,34 @@ import {
     contractAddress,
     ContractProvider,
     Dictionary,
+    DictionaryValue,
     Sender,
     SendMode,
 } from 'ton-core';
 
-export type MassSenderConfig = {};
 export type Msg = {
     destination: Address;
     value: bigint;
 };
+export type MassSenderConfig = {
+    messages: Msg[];
+};
+
+const msgDictValue: DictionaryValue<Msg> = {
+    serialize: (src, buidler) => {
+        buidler.storeAddress(src.destination).storeCoins(src.value);
+    },
+    parse: (src) => {
+        return { destination: src.loadAddress(), value: src.loadCoins() };
+    },
+};
 
 export function massSenderConfigToCell(config: MassSenderConfig): Cell {
-    return beginCell().endCell();
+    let msgDict = Dictionary.empty(Dictionary.Keys.Uint(8), msgDictValue);
+    for (let i = 0; i < config.messages.length; i++) {
+        msgDict.set(i, config.messages[i]);
+    }
+    return beginCell().storeUint(config.messages.length, 8).storeDict(msgDict).endCell();
 }
 
 export class MassSender implements Contract {
@@ -37,20 +53,7 @@ export class MassSender implements Contract {
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().endCell(),
-        });
-    }
-
-    async sendSend(provider: ContractProvider, via: Sender, value: bigint, messages: Msg[]) {
-        let msgDict = Dictionary.empty(Dictionary.Keys.Uint(8), Dictionary.Values.Cell());
-        for (let i = 0; i < messages.length; i++) {
-            msgDict.set(i, beginCell().storeAddress(messages[i].destination).storeCoins(messages[i].value).endCell());
-        }
-
-        await provider.internal(via, {
-            value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(0x2883b930, 32).storeUint(messages.length, 8).storeDict(msgDict).endCell(),
+            body: Cell.EMPTY,
         });
     }
 }

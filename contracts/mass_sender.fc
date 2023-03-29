@@ -2,7 +2,7 @@
 
 const int op::send = 0x12345678;
 
-() send_transfer(slice dest, int value) {
+() send_transfer(slice dest, int value) impure inline {
     send_raw_message(begin_cell()
         .store_uint(0x18, 6)
         .store_slice(dest)
@@ -11,7 +11,7 @@ const int op::send = 0x12345678;
     .end_cell(), 3);
 }
 
-() send_excesses(slice dest) {
+() send_excesses(slice dest) impure inline {
     send_raw_message(begin_cell()
         .store_uint(0x18, 6)
         .store_slice(dest)

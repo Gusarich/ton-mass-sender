@@ -1,2 +1,2 @@
 _ dest:MsgAddressInt value:Coins = Msg;
-send length:uint8 messages:(HashmapE 8 Msg) = InternalMsgBody;
+send#2883b930 length:uint8 messages:(HashmapE 8 Msg) = InternalMsgBody;

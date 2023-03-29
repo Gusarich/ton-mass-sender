@@ -1,6 +1,6 @@
 #include "imports/stdlib.fc";
 
-const int op::send = 0x12345678;
+const int op::send = 0x2883b930;
 
 () send_transfer(slice dest, int value) impure inline {
     send_raw_message(begin_cell()

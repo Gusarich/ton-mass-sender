@@ -2,6 +2,20 @@
 
 const int ton_for_fee = 100000000;
 
+(int, int, slice, slice) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (ds~load_coins(), ds~load_uint(1), ds~load_msg_addr(), ds);
+}
+
+() save_data(int total, int initiated, slice admin, slice messages) impure inline {
+    set_data(begin_cell()
+        .store_coins(total)
+        .store_uint(initiated, 1)
+        .store_slice(admin)
+        .store_slice(messages)
+    .end_cell());
+}
+
 () send_transfer(slice dest, int value) impure inline {
     send_raw_message(begin_cell()
         .store_uint(0x10, 6)
@@ -21,25 +35,45 @@ const int ton_for_fee = 100000000;
     .end_cell(), 160);
 }
 
+(int) get_length(slice messages) inline {
+    int length = 0;
+    while (~ messages.slice_refs_empty?()) {
+        cell ref = messages~load_ref();
+        length += ref.cell_depth();
+    }
+    return length;
+}
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     slice cs = in_msg_full.begin_parse();
     cs~skip_bits(4);
     slice sender = cs~load_msg_addr();
-    slice ds = get_data().begin_parse();
+    (int total, int initiated, slice admin, slice all_messages) = load_data();
 
-    int length = ds~load_uint(8);
-    cell messages = ds~load_dict();
-
-    int total = 0;
-    int index = 0;
-    repeat (length) {
-        (slice msg, int f?) = messages.udict_get?(8, index);
-        slice dest = msg~load_msg_addr();
-        int value = msg~load_coins();
-        send_transfer(dest, value);
-        total += value;
-        index += 1;
+    if (initiated == 0) {
+        throw_if(101, total > msg_value - ton_for_fee * get_length(all_messages));
+        initiated = 1;
+        admin = sender;
+    } else {
+        throw_unless(100, equal_slices(sender, my_address()));
+        accept_message();
     }
-    throw_if(101, total > msg_value - ton_for_fee * length);
-    send_excesses(sender);
+
+    slice messages = all_messages;
+    all_messages~load_ref();
+
+    do {
+        messages = (messages~load_ref()).begin_parse();
+        int value = messages~load_coins();
+        slice dest = messages~load_msg_addr();
+        send_transfer(dest, value);
+    } until (messages.slice_refs_empty?());
+    
+    save_data(total, initiated, admin, all_messages);
+
+    if (all_messages.slice_refs_empty?()) {
+        send_excesses(admin);
+    } else {
+        send_transfer(my_address(), ton_for_fee);
+    }
 }

@@ -25,8 +25,8 @@ export async function run(provider: NetworkProvider) {
     let messages: Msg[] = [];
     for (const addr of Object.keys(rawMessages)) {
         messages.push({
-            destination: Address.parse(addr),
             value: toNano(rawMessages[addr]),
+            destination: Address.parse(addr),
         });
     }
     await process(provider, messages);

@@ -1,2 +1,0 @@
-_ dest:MsgAddressInt value:Coins = Msg;
-_ length:uint8 messages:(HashmapE 8 Msg) = Storage;

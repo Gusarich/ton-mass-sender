@@ -12,7 +12,7 @@ describe('MassSender', () => {
 
     beforeAll(async () => {
         code = await compile('MassSender');
-        for (let i = 0; i < 254; i++) {
+        for (let i = 0; i < 1016; i++) {
             randomAddresses.push(randomAddress());
         }
     });
@@ -31,7 +31,7 @@ describe('MassSender', () => {
         let massSender = blockchain.openContract(
             MassSender.createFromConfig(
                 {
-                    messages: [{ destination: randomAddresses[0], value: toNano('1') }],
+                    messages: [{ value: toNano('1'), destination: randomAddresses[0] }],
                 },
                 code
             )
@@ -54,9 +54,9 @@ describe('MassSender', () => {
         let massSender = blockchain.openContract(
             MassSender.createFromConfig(
                 {
-                    messages: randomAddresses.map((addr, idx) => ({
-                        destination: addr,
+                    messages: randomAddresses.slice(0, 254).map((addr, idx) => ({
                         value: toNano(idx + 1),
+                        destination: addr,
                     })),
                 },
                 code
@@ -78,7 +78,63 @@ describe('MassSender', () => {
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
     });
 
-    it('should send message 254 times', async () => {
+    it('should send 1016 messages', async () => {
+        let massSender = blockchain.openContract(
+            MassSender.createFromConfig(
+                {
+                    messages: randomAddresses.map((addr, idx) => ({
+                        value: toNano(idx + 1),
+                        destination: addr,
+                    })),
+                },
+                code
+            )
+        );
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('516636'));
+        expect(result.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: massSender.address,
+            success: true,
+        });
+        for (let i = 0; i < 1016; ++i) {
+            expect(result.transactions).toHaveTransaction({
+                from: massSender.address,
+                to: randomAddresses[i],
+                value: toNano(i + 1),
+            });
+        }
+        expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+    });
+
+    it('should send 600 messages', async () => {
+        let massSender = blockchain.openContract(
+            MassSender.createFromConfig(
+                {
+                    messages: randomAddresses.slice(0, 600).map((addr, idx) => ({
+                        value: toNano(idx + 1),
+                        destination: addr,
+                    })),
+                },
+                code
+            )
+        );
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('180300'));
+        expect(result.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: massSender.address,
+            success: true,
+        });
+        for (let i = 0; i < 600; ++i) {
+            expect(result.transactions).toHaveTransaction({
+                from: massSender.address,
+                to: randomAddresses[i],
+                value: toNano(i + 1),
+            });
+        }
+        expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+    });
+
+    it('should send message several times', async () => {
         async function sendMessage(msg: Msg) {
             let massSender = blockchain.openContract(
                 MassSender.createFromConfig(
@@ -102,10 +158,10 @@ describe('MassSender', () => {
             expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
         }
 
-        for (let i = 0; i < 254; ++i) {
+        for (let i = 0; i < 15; ++i) {
             await sendMessage({
-                destination: randomAddresses[i],
                 value: toNano(randomInt(1, 100)),
+                destination: randomAddresses[i],
             });
         }
     });
@@ -115,8 +171,8 @@ describe('MassSender', () => {
             MassSender.createFromConfig(
                 {
                     messages: randomAddresses.map((addr, idx) => ({
-                        destination: addr,
                         value: toNano(idx + 1),
+                        destination: addr,
                     })),
                 },
                 code

@@ -13,28 +13,41 @@ import {
 } from 'ton-core';
 
 export type Msg = {
-    destination: Address;
     value: bigint;
+    destination: Address;
 };
 export type MassSenderConfig = {
     messages: Msg[];
 };
 
-const msgDictValue: DictionaryValue<Msg> = {
-    serialize: (src, buidler) => {
-        buidler.storeAddress(src.destination).storeCoins(src.value);
-    },
-    parse: (src) => {
-        return { destination: src.loadAddress(), value: src.loadCoins() };
-    },
-};
+function messagesToCell(messages: Msg[]): Cell {
+    let c = beginCell()
+        .storeCoins(messages[messages.length - 1].value)
+        .storeAddress(messages[messages.length - 1].destination)
+        .endCell();
+    for (let i = messages.length - 2; i >= 0; i--) {
+        c = beginCell().storeCoins(messages[i].value).storeAddress(messages[i].destination).storeRef(c).endCell();
+    }
+    return c;
+}
 
 export function massSenderConfigToCell(config: MassSenderConfig): Cell {
-    let msgDict = Dictionary.empty(Dictionary.Keys.Uint(8), msgDictValue);
-    for (let i = 0; i < config.messages.length; i++) {
-        msgDict.set(i, config.messages[i]);
+    if (config.messages.length > 1016) {
+        throw 'Too many messages! Amount should not be more than 1016.';
     }
-    return beginCell().storeUint(config.messages.length, 8).storeDict(msgDict).endCell();
+    let b = beginCell()
+        .storeCoins(config.messages.map((msg) => msg.value).reduce((a, b) => a + b))
+        .storeUint(0, 1)
+        .storeUint(0, 2);
+    for (let i = 0; i < config.messages.length; i += 254) {
+        const chunk = config.messages.slice(i, i + 254);
+        b.storeRef(messagesToCell(chunk));
+    }
+    return b.endCell();
+}
+
+function getMessagesLength(refs: Cell[]): number {
+    return refs.map((r) => r.depth() + 1).reduce((a, b) => a + b);
 }
 
 export class MassSender implements Contract {
@@ -52,7 +65,7 @@ export class MassSender implements Contract {
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
         await provider.internal(via, {
-            value: value + this.init!.data.beginParse().loadUintBig(8) * toNano('0.1'),
+            value: value + BigInt(getMessagesLength(this.init!.data.refs)) * toNano('0.1'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: Cell.EMPTY,
         });

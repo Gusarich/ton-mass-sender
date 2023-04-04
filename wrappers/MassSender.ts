@@ -5,8 +5,6 @@ import {
     Contract,
     contractAddress,
     ContractProvider,
-    Dictionary,
-    DictionaryValue,
     Sender,
     SendMode,
     toNano,
@@ -46,7 +44,7 @@ export function massSenderConfigToCell(config: MassSenderConfig): Cell {
     return b.endCell();
 }
 
-function getMessagesLength(refs: Cell[]): number {
+export function getMessagesLength(refs: Cell[]): number {
     return refs.map((r) => r.depth() + 1).reduce((a, b) => a + b);
 }
 

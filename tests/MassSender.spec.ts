@@ -12,7 +12,7 @@ describe('MassSender', () => {
 
     beforeAll(async () => {
         code = await compile('MassSender');
-        for (let i = 0; i < 1016; i++) {
+        for (let i = 0; i < 1400; i++) {
             randomAddresses.push(randomAddress());
         }
     });
@@ -78,7 +78,7 @@ describe('MassSender', () => {
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
     });
 
-    it('should send 1016 messages', async () => {
+    it('should send 1400 messages', async () => {
         let massSender = blockchain.openContract(
             MassSender.createFromConfig(
                 {
@@ -90,13 +90,13 @@ describe('MassSender', () => {
                 code
             )
         );
-        const result = await massSender.sendDeploy(deployer.getSender(), toNano('516636'));
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('980700'));
         expect(result.transactions).toHaveTransaction({
             from: deployer.address,
             to: massSender.address,
             success: true,
         });
-        for (let i = 0; i < 1016; ++i) {
+        for (let i = 0; i < 1400; ++i) {
             expect(result.transactions).toHaveTransaction({
                 from: massSender.address,
                 to: randomAddresses[i],

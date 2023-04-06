@@ -5,6 +5,8 @@ import {
     Contract,
     contractAddress,
     ContractProvider,
+    Dictionary,
+    DictionaryValue,
     Sender,
     SendMode,
     toNano,
@@ -18,35 +20,35 @@ export type MassSenderConfig = {
     messages: Msg[];
 };
 
-function messagesToCell(messages: Msg[]): Cell {
-    let c = beginCell()
-        .storeCoins(messages[messages.length - 1].value)
-        .storeAddress(messages[messages.length - 1].destination)
-        .endCell();
-    for (let i = messages.length - 2; i >= 0; i--) {
-        c = beginCell().storeCoins(messages[i].value).storeAddress(messages[i].destination).storeRef(c).endCell();
+function createMessageValue(): DictionaryValue<Msg> {
+    return {
+        serialize: (src, buidler) => {
+            buidler.storeCoins(src.value).storeAddress(src.destination);
+        },
+        parse: (src) => {
+            return { value: src.loadCoins(), destination: src.loadAddress() };
+        },
+    };
+}
+
+function messagesToDict(messages: Msg[]): Dictionary<number, Msg> {
+    let dict = Dictionary.empty(Dictionary.Keys.Uint(16), createMessageValue());
+    for (let i = 1; i <= messages.length; i++) {
+        dict.set(i, messages[i - 1]);
     }
-    return c;
+    return dict;
 }
 
 export function massSenderConfigToCell(config: MassSenderConfig): Cell {
-    if (config.messages.length > 1016) {
-        throw 'Too many messages! Amount should not be more than 1016.';
-    }
-    let b = beginCell()
+    return beginCell()
         .storeUint(Date.now(), 64)
         .storeCoins(config.messages.map((msg) => msg.value).reduce((a, b) => a + b))
+        .storeUint(config.messages.length, 16)
+        .storeUint(0, 16)
         .storeUint(0, 1)
-        .storeUint(0, 2);
-    for (let i = 0; i < config.messages.length; i += 254) {
-        const chunk = config.messages.slice(i, i + 254);
-        b.storeRef(messagesToCell(chunk));
-    }
-    return b.endCell();
-}
-
-export function getMessagesLength(refs: Cell[]): number {
-    return refs.map((r) => r.depth() + 1).reduce((a, b) => a + b);
+        .storeUint(0, 2)
+        .storeDict(messagesToDict(config.messages))
+        .endCell();
 }
 
 export class MassSender implements Contract {
@@ -63,8 +65,12 @@ export class MassSender implements Contract {
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+        let s = this.init!.data.asSlice();
+        s.loadUint(64);
+        s.loadCoins();
+        const length = s.loadUint(16);
         await provider.internal(via, {
-            value: value + BigInt(getMessagesLength(this.init!.data.refs)) * toNano('0.1'),
+            value: value + BigInt(length + Math.ceil(length / 254)) * toNano('0.1'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: Cell.EMPTY,
         });

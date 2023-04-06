@@ -2,8 +2,8 @@
     "name": "ton-mass-sender",
     "license": "MIT",
     "scripts": {
-        "test": "jest",
-        "bot": "yarn tsc --build --clean && yarn tsc --build && node telegram/bot.js"
+        "test": "yarn tsc --build --clean && jest --verbose",
+        "bot": "yarn tsc --build --clean && yarn tsc --build && node dist/telegram/bot.js"
     },
     "devDependencies": {
         "@ton-community/blueprint": "^0.6.1",

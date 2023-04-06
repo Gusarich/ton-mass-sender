@@ -34,6 +34,7 @@ export function massSenderConfigToCell(config: MassSenderConfig): Cell {
         throw 'Too many messages! Amount should not be more than 1016.';
     }
     let b = beginCell()
+        .storeUint(Date.now(), 64)
         .storeCoins(config.messages.map((msg) => msg.value).reduce((a, b) => a + b))
         .storeUint(0, 1)
         .storeUint(0, 2);

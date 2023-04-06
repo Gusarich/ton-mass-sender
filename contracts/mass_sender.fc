@@ -2,13 +2,14 @@
 
 const int ton_for_fee = 100000000;
 
-(int, int, slice, slice) load_data() inline {
+(int, int, int, slice, slice) load_data() inline {
     slice ds = get_data().begin_parse();
-    return (ds~load_coins(), ds~load_uint(1), ds~load_msg_addr(), ds);
+    return (ds~load_uint(64), ds~load_coins(), ds~load_uint(1), ds~load_msg_addr(), ds);
 }
 
-() save_data(int total, int initiated, slice admin, slice messages) impure inline {
+() save_data(int seed, int total, int initiated, slice admin, slice messages) impure inline {
     set_data(begin_cell()
+        .store_uint(seed, 64)
         .store_coins(total)
         .store_uint(initiated, 1)
         .store_slice(admin)
@@ -46,9 +47,12 @@ const int ton_for_fee = 100000000;
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     slice cs = in_msg_full.begin_parse();
-    cs~skip_bits(4);
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
     slice sender = cs~load_msg_addr();
-    (int total, int initiated, slice admin, slice all_messages) = load_data();
+    (int seed, int total, int initiated, slice admin, slice all_messages) = load_data();
 
     if (initiated == 0) {
         throw_if(101, total > msg_value - ton_for_fee * get_length(all_messages));
@@ -69,7 +73,7 @@ const int ton_for_fee = 100000000;
         send_transfer(dest, value);
     } until (messages.slice_refs_empty?());
     
-    save_data(total, initiated, admin, all_messages);
+    save_data(seed, total, initiated, admin, all_messages);
 
     if (all_messages.slice_refs_empty?()) {
         send_excesses(admin);

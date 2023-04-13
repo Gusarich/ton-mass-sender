@@ -192,4 +192,37 @@ describe('MassSender', () => {
         });
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
     });
+
+    it('should continue sending after post-payment', async () => {
+        let massSender = blockchain.openContract(
+            MassSender.createFromConfig(
+                {
+                    messages: randomAddresses.slice(0, 300).map((addr, idx) => ({
+                        value: toNano(idx + 1),
+                        destination: addr,
+                    })),
+                    total: 0n,
+                },
+                code
+            )
+        );
+
+        let result = await massSender.sendDeploy(deployer.getSender(), toNano('45000'));
+        expect(result.transactions).toHaveTransaction({
+            on: massSender.address,
+            aborted: true,
+            actionResultCode: 37,
+        });
+        expect(result.transactions).toHaveLength(257);
+
+        result = await massSender.sendContinue(deployer.getSender(), toNano('150'));
+        expect(result.transactions).toHaveLength(49);
+        for (let i = 254; i < 300; ++i) {
+            expect(result.transactions).toHaveTransaction({
+                from: massSender.address,
+                to: randomAddresses[i],
+                value: toNano(i + 1),
+            });
+        }
+    });
 });

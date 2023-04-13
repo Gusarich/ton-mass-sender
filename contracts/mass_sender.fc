@@ -52,7 +52,7 @@ const int ton_for_fee = 100000000;
         initiated = 1;
         admin = sender;
     } else {
-        throw_unless(100, equal_slices(sender, my_address()));
+        throw_unless(100, equal_slices(sender, my_address()) | equal_slices(sender, admin));
         accept_message();
     }
 

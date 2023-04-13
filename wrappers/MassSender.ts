@@ -18,6 +18,7 @@ export type Msg = {
 };
 export type MassSenderConfig = {
     messages: Msg[];
+    total?: bigint;
 };
 
 function createMessageValue(): DictionaryValue<Msg> {
@@ -42,7 +43,9 @@ function messagesToDict(messages: Msg[]): Dictionary<number, Msg> {
 export function massSenderConfigToCell(config: MassSenderConfig): Cell {
     return beginCell()
         .storeUint(Date.now(), 64)
-        .storeCoins(config.messages.map((msg) => msg.value).reduce((a, b) => a + b))
+        .storeCoins(
+            config.total !== undefined ? config.total : config.messages.map((msg) => msg.value).reduce((a, b) => a + b)
+        )
         .storeUint(config.messages.length, 16)
         .storeUint(0, 16)
         .storeUint(0, 1)
@@ -71,6 +74,14 @@ export class MassSender implements Contract {
         const length = s.loadUint(16);
         await provider.internal(via, {
             value: value + BigInt(length + Math.ceil(length / 254)) * toNano('0.1'),
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: Cell.EMPTY,
+        });
+    }
+
+    async sendContinue(provider: ContractProvider, via: Sender, value: bigint) {
+        await provider.internal(via, {
+            value: value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: Cell.EMPTY,
         });

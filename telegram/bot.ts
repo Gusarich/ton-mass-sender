@@ -84,24 +84,35 @@ async function main(): Promise<void> {
             await bot.sendMessage(chatId, 'File is too big. The limit is 1MB.');
             return;
         }
-        if (!msg.document!.file_name!.endsWith('.json') && !msg.document!.file_name!.endsWith('.csv')) {
+
+        if (msg.document!.file_name!.endsWith('.json')) {
+            const rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
+            let messages: Msg[] = [];
+            for (const addr of Object.keys(rawMessages)) {
+                messages.push({
+                    value: toNano(rawMessages[addr]),
+                    destination: Address.parse(addr),
+                });
+            }
+            await processMessages(messages, chatId);
+        } else if (msg.document!.file_name!.endsWith('.csv')) {
+            const rawMessagesText = await (await fetch(await bot.getFileLink(msg.document!.file_id))).text();
+            const rawMessages = rawMessagesText.split('\n').map((t) => t.split(','));
+            let messages: Msg[] = [];
+            for (const msg of rawMessages) {
+                console.log(msg);
+                messages.push({
+                    value: toNano(msg[1]),
+                    destination: Address.parse(msg[0]),
+                });
+            }
+            await processMessages(messages, chatId);
+        } else {
             await bot.sendMessage(
                 chatId,
                 'Your file has unsupported extension. Make sure it is either `.json` or `.csv`.'
             );
-            return;
         }
-
-        const rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
-        let messages: Msg[] = [];
-        for (const addr of Object.keys(rawMessages)) {
-            messages.push({
-                value: toNano(rawMessages[addr]),
-                destination: Address.parse(addr),
-            });
-        }
-
-        await processMessages(messages, chatId);
     });
 
     bot.on('text', async (msg) => {

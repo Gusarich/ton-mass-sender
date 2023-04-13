@@ -2,6 +2,7 @@ require('dotenv').config();
 
 import TelegramBot from 'node-telegram-bot-api';
 import * as fs from 'fs';
+import * as os from 'os';
 import { Msg, massSenderConfigToCell } from '../wrappers/MassSender';
 import { TonConnectProvider } from './provider';
 import { Address, Cell, contractAddress, toNano } from 'ton-core';
@@ -62,7 +63,7 @@ async function main(): Promise<void> {
                 return;
             }
 
-            const filename = 'qrcode' + Math.floor(Math.random() * 1e6).toString() + '.png';
+            const filename = os.tmpdir() + 'qrcode' + Math.floor(Math.random() * 1e6).toString() + '.png';
             toFile(filename, url, async () => {
                 const msg = await bot.sendPhoto(chatId, filename, { caption: 'Scan this QR code with Tonkeeper' });
                 await fs.promises.rm(filename);

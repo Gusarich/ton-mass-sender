@@ -2,13 +2,15 @@ require('dotenv').config();
 
 import TelegramBot from 'node-telegram-bot-api';
 import * as fs from 'fs';
-import { Msg, getMessagesLength, massSenderConfigToCell } from '../wrappers/MassSender';
+import { Msg, massSenderConfigToCell } from '../wrappers/MassSender';
 import { TonConnectProvider } from './provider';
 import { Address, Cell, contractAddress, toNano } from 'ton-core';
 import { compile } from '@ton-community/blueprint';
 import { initRedisClient } from './tonconnect/storage';
 import { toFile } from 'qrcode';
 import { getConnector } from './tonconnect/connector';
+
+const TOO_BIG_FILE = 1024 * 1024; // 1 megabyte
 
 const token = process.env.TELEGRAM_BOT_TOKEN!;
 const bot = new TelegramBot(token, { polling: true });
@@ -23,6 +25,18 @@ async function main(): Promise<void> {
 
     bot.on('document', async (msg) => {
         const chatId = msg.chat.id;
+        if (msg.document!.file_size! > TOO_BIG_FILE) {
+            await bot.sendMessage(chatId, 'File is too big. The limit is 1MB.');
+            return;
+        }
+        if (!msg.document!.file_name!.endsWith('.json') && !msg.document!.file_name!.endsWith('.csv')) {
+            await bot.sendMessage(
+                chatId,
+                'Your file has unsupported extension. Make sure it is either `.json` or `.csv`.'
+            );
+            return;
+        }
+
         const rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
         let messages: Msg[] = [];
         for (const addr of Object.keys(rawMessages)) {
@@ -64,7 +78,7 @@ async function main(): Promise<void> {
             });
             const value =
                 messages.map((msg) => msg.value).reduce((a, b) => a + b) +
-                BigInt(getMessagesLength(data.refs)) * toNano('0.1');
+                BigInt(messages.length + Math.ceil(messages.length / 254)) * toNano('0.1');
 
             await bot.sendMessage(chatId, 'Confirm transaction in Tonkeeper');
 

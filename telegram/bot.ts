@@ -115,7 +115,7 @@ async function main(): Promise<void> {
         }
     });
 
-    bot.on('text', async (msg) => {
+    bot.onText(/[a-zA-Z0-9-_]{48}: \d+/gm, async (msg) => {
         const chatId = msg.chat.id;
 
         const rawMessagesText = msg.text!.match(/[a-zA-Z0-9-_]{48}: \d+/gm);
@@ -133,6 +133,14 @@ async function main(): Promise<void> {
         }
 
         await processMessages(messages, chatId);
+    });
+
+    bot.onText(/\/start|\/help/, async (msg) => {
+        await bot.sendMessage(
+            msg.chat.id,
+            'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me an `.json` or `.csv` file, or just a simple message in format:\n\n`EQDk0rRqwtKw34r0fecUO6YotwKfMPU9XIxwrfjOfX9BIUx_: 52\nEQBnk2PqeZZjIya2zvPlH2pnSQYYPjNReMntiOyWYt9au_fc: 34\nEQCafuKP6EVcOo_ZifdIBfE1EwM1QPFj_-ryaT0IY6CNRVtV: 100`',
+            { parse_mode: 'MarkdownV2' }
+        );
     });
 }
 

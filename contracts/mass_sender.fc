@@ -58,7 +58,7 @@ const int ton_for_fee = 100000000;
 
     (last_key, slice val, int f?) = messages.udict_get_next?(16, last_key);
 
-    repeat (254) {
+    repeat (min(254, length)) {
         if (f?) {
             int value = val~load_coins();
             slice dest = val~load_msg_addr();

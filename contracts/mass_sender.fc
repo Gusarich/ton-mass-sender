@@ -35,7 +35,7 @@ const int ton_for_fee = 100000000;
         .store_coins(0)
         .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 32)
         .store_slice("Excesses")
-    .end_cell(), 160);
+    .end_cell(), 128);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {

@@ -42,6 +42,7 @@ async function sendTransaction(messages: Msg[], chatId: number, provider: TonCon
             data,
         });
         await bot.sendMessage(chatId, 'Transaction sent!');
+        await bot.sendMessage(chatId, 'https://tonscan.org/address/' + address);
     } catch (UserRejectsError) {
         await bot.sendMessage(chatId, 'You rejected the transaction');
     }

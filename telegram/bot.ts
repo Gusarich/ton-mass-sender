@@ -138,7 +138,16 @@ async function main(): Promise<void> {
         await processMessages(messages, chatId);
     });
 
-    bot.onText(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm, async (msg) => {
+    bot.onText(/.*/, async (msg) => {
+        if (!msg.text?.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm)) {
+            await bot.sendMessage(
+                msg.chat.id,
+                'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me the list for sending either in \\.json or \\.csv file or in plain text\\.\n\nPlain text format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2`\n\nJSON format:\n`{\n    "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n    "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`\n\nCSV format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL, 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN, 1.2`',
+                { parse_mode: 'MarkdownV2' }
+            );
+            return;
+        }
+
         const chatId = msg.chat.id;
 
         const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm);
@@ -162,14 +171,6 @@ async function main(): Promise<void> {
         }
 
         await processMessages(messages, chatId);
-    });
-
-    bot.onText(/\/start|\/help/, async (msg) => {
-        await bot.sendMessage(
-            msg.chat.id,
-            'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me the list for sending either in \\.json or \\.csv file or in plain text\\.\n\nPlain text format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2`\n\nJSON format:\n`{\n    "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n    "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`\n\nCSV format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL, 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN, 1.2`',
-            { parse_mode: 'MarkdownV2' }
-        );
     });
 }
 

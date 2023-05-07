@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { Msg, massSenderConfigToCell } from '../wrappers/MassSender';
 import { TonConnectProvider } from './provider';
-import { Address, Cell, contractAddress, toNano } from 'ton-core';
+import { Address, Cell, contractAddress, fromNano, toNano } from 'ton-core';
 import { compile } from '@ton-community/blueprint';
 import { initRedisClient } from './tonconnect/storage';
 import { toFile } from 'qrcode';
@@ -88,18 +88,31 @@ async function main(): Promise<void> {
         }
 
         var rawMessages: {
-            [key: string]: string;
+            [key: string]: bigint;
         };
 
         if (msg.document!.file_name!.endsWith('.json')) {
-            rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
+            try {
+                rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
+                Object.keys(rawMessages).forEach((key) => {
+                    rawMessages[key] = toNano(rawMessages[key]);
+                });
+            } catch (e) {
+                await bot.sendMessage(chatId, 'Invalid JSON! Please try again.');
+                return;
+            }
         } else if (msg.document!.file_name!.endsWith('.csv')) {
-            rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
-                skip_empty_lines: true,
-            }).reduce((map: { [key: string]: string }, obj: string[2]) => {
-                map[obj[0]] = obj[1];
-                return map;
-            }, {});
+            try {
+                rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
+                    skip_empty_lines: true,
+                }).reduce((map: { [key: string]: bigint }, obj: string[2]) => {
+                    map[obj[0]] = toNano(obj[1]);
+                    return map;
+                }, {});
+            } catch (e) {
+                await bot.sendMessage(chatId, 'Invalid CSV! Please try again.');
+                return;
+            }
         } else {
             await bot.sendMessage(
                 chatId,
@@ -108,15 +121,16 @@ async function main(): Promise<void> {
             return;
         }
 
+        console.log(rawMessages);
+
         let messages: Msg[] = [];
         for (const addr of Object.keys(rawMessages)) {
-            const value = toNano(rawMessages[addr]);
-            if (value <= 0) {
-                await bot.sendMessage(chatId, 'Invalid value: ' + rawMessages[addr]);
+            if (rawMessages[addr] <= 0n) {
+                await bot.sendMessage(chatId, 'Invalid value: ' + fromNano(rawMessages[addr]));
                 return;
             }
             messages.push({
-                value,
+                value: rawMessages[addr],
                 destination: Address.parse(addr),
             });
         }

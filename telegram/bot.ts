@@ -165,7 +165,7 @@ async function main(): Promise<void> {
     bot.onText(/\/start|\/help/, async (msg) => {
         await bot.sendMessage(
             msg.chat.id,
-            'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me an `.json` or `.csv` file, or just a simple message in format:\n\n`EQDk0rRqwtKw34r0fecUO6YotwKfMPU9XIxwrfjOfX9BIUx_: 52\nEQBnk2PqeZZjIya2zvPlH2pnSQYYPjNReMntiOyWYt9au_fc: 34\nEQCafuKP6EVcOo_ZifdIBfE1EwM1QPFj_-ryaT0IY6CNRVtV: 100`',
+            'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me the list for sending either in \\.json or \\.csv file or in plain text\\.\n\nPlain text format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2`\n\nJSON format:\n`{\n    "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n    "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`\n\nCSV format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL, 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN, 1.2`',
             { parse_mode: 'MarkdownV2' }
         );
     });

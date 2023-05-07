@@ -59,6 +59,7 @@ async function processMessages(messages: Msg[], chatId: number) {
         const url = await provider.getConnectUrl();
 
         if (url === undefined) {
+            await bot.sendMessage(chatId, 'Unknown error!');
             return;
         }
 
@@ -142,6 +143,7 @@ async function main(): Promise<void> {
 
         const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm);
         if (rawMessagesText == null || rawMessagesText.length == 0) {
+            await bot.sendMessage(chatId, 'Wrong message format!');
             return;
         }
         const rawMessages = rawMessagesText.map((t) => t.split(': '));

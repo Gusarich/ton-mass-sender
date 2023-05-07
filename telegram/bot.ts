@@ -10,6 +10,7 @@ import { compile } from '@ton-community/blueprint';
 import { initRedisClient } from './tonconnect/storage';
 import { toFile } from 'qrcode';
 import { getConnector } from './tonconnect/connector';
+import { parse } from 'csv-parse/sync';
 
 const TOO_BIG_FILE = 1024 * 1024; // 1 megabyte
 
@@ -86,45 +87,40 @@ async function main(): Promise<void> {
             return;
         }
 
+        var rawMessages: {
+            [key: string]: string;
+        };
+
         if (msg.document!.file_name!.endsWith('.json')) {
-            const rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
-            let messages: Msg[] = [];
-            for (const addr of Object.keys(rawMessages)) {
-                const value = toNano(rawMessages[addr]);
-                if (value <= 0) {
-                    await bot.sendMessage(chatId, 'Invalid value: ' + rawMessages[addr]);
-                    return;
-                }
-                messages.push({
-                    value,
-                    destination: Address.parse(addr),
-                });
-            }
-            await processMessages(messages, chatId);
+            rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
         } else if (msg.document!.file_name!.endsWith('.csv')) {
-            const rawMessagesText = await (await fetch(await bot.getFileLink(msg.document!.file_id))).text();
-            const rawMessages = rawMessagesText.split('\r\n').map((t) => t.split(','));
-            let messages: Msg[] = [];
-            for (const msg of rawMessages) {
-                if (msg[0] != '') {
-                    const value = toNano(toNano(msg[1]));
-                    if (value <= 0) {
-                        await bot.sendMessage(chatId, 'Invalid value: ' + msg[1]);
-                        return;
-                    }
-                    messages.push({
-                        value,
-                        destination: Address.parse(msg[0]),
-                    });
-                }
-            }
-            await processMessages(messages, chatId);
+            rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
+                skip_empty_lines: true,
+            }).reduce((map: { [key: string]: string }, obj: string[2]) => {
+                map[obj[0]] = obj[1];
+                return map;
+            }, {});
         } else {
             await bot.sendMessage(
                 chatId,
                 'Your file has unsupported extension. Make sure it is either `.json` or `.csv`.'
             );
+            return;
         }
+
+        let messages: Msg[] = [];
+        for (const addr of Object.keys(rawMessages)) {
+            const value = toNano(rawMessages[addr]);
+            if (value <= 0) {
+                await bot.sendMessage(chatId, 'Invalid value: ' + rawMessages[addr]);
+                return;
+            }
+            messages.push({
+                value,
+                destination: Address.parse(addr),
+            });
+        }
+        await processMessages(messages, chatId);
     });
 
     bot.onText(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm, async (msg) => {

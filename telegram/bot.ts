@@ -90,8 +90,13 @@ async function main(): Promise<void> {
             const rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
             let messages: Msg[] = [];
             for (const addr of Object.keys(rawMessages)) {
+                const value = toNano(rawMessages[addr]);
+                if (value <= 0) {
+                    await bot.sendMessage(chatId, 'Invalid value: ' + rawMessages[addr]);
+                    return;
+                }
                 messages.push({
-                    value: toNano(rawMessages[addr]),
+                    value,
                     destination: Address.parse(addr),
                 });
             }
@@ -102,13 +107,17 @@ async function main(): Promise<void> {
             let messages: Msg[] = [];
             for (const msg of rawMessages) {
                 if (msg[0] != '') {
+                    const value = toNano(toNano(msg[1]));
+                    if (value <= 0) {
+                        await bot.sendMessage(chatId, 'Invalid value: ' + msg[1]);
+                        return;
+                    }
                     messages.push({
-                        value: toNano(msg[1]),
+                        value,
                         destination: Address.parse(msg[0]),
                     });
                 }
             }
-            console.log(messages.length);
             await processMessages(messages, chatId);
         } else {
             await bot.sendMessage(
@@ -118,10 +127,10 @@ async function main(): Promise<void> {
         }
     });
 
-    bot.onText(/^[a-zA-Z0-9-_]{48}: \d+(\.\d+)?$/gm, async (msg) => {
+    bot.onText(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm, async (msg) => {
         const chatId = msg.chat.id;
 
-        const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: \d+(\.\d+)?$/gm);
+        const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm);
         if (rawMessagesText == null || rawMessagesText.length == 0) {
             return;
         }
@@ -129,8 +138,13 @@ async function main(): Promise<void> {
 
         let messages: Msg[] = [];
         for (const msg of rawMessages) {
+            const value = toNano(msg[1]);
+            if (value <= 0) {
+                await bot.sendMessage(chatId, 'Invalid value: ' + msg[1]);
+                return;
+            }
             messages.push({
-                value: toNano(msg[1]),
+                value,
                 destination: Address.parse(msg[0]),
             });
         }

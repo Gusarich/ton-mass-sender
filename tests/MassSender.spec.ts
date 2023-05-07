@@ -50,6 +50,29 @@ describe('MassSender', () => {
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
     });
 
+    it('should send one message to admin', async () => {
+        let massSender = blockchain.openContract(
+            MassSender.createFromConfig(
+                {
+                    messages: [{ value: toNano('0.1'), destination: deployer.address }],
+                },
+                code
+            )
+        );
+        const result = await massSender.sendDeploy(deployer.getSender(), toNano('0.1'));
+        expect(result.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: massSender.address,
+            success: true,
+        });
+        expect(result.transactions).toHaveTransaction({
+            from: massSender.address,
+            to: deployer.address,
+            value: toNano('0.1'),
+        });
+        expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+    });
+
     it('should send 254 messages', async () => {
         let massSender = blockchain.openContract(
             MassSender.createFromConfig(

@@ -118,10 +118,10 @@ async function main(): Promise<void> {
         }
     });
 
-    bot.onText(/[a-zA-Z0-9-_]{48}: \d+/gm, async (msg) => {
+    bot.onText(/^[a-zA-Z0-9-_]{48}: \d+(\.\d+)?$/gm, async (msg) => {
         const chatId = msg.chat.id;
 
-        const rawMessagesText = msg.text!.match(/[a-zA-Z0-9-_]{48}: \d+/gm);
+        const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: \d+(\.\d+)?$/gm);
         if (rawMessagesText == null || rawMessagesText.length == 0) {
             return;
         }

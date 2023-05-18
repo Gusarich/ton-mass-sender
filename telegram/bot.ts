@@ -151,22 +151,36 @@ async function main(): Promise<void> {
                 await bot.sendMessage(
                     chatId,
                     'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
-                    {
-                        parse_mode: 'MarkdownV2',
-                    }
+                    { parse_mode: 'MarkdownV2' }
                 );
                 return;
             }
         } else if (msg.document!.file_name!.endsWith('.csv')) {
+            var good = true;
+            var duplicate: string;
             try {
                 rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
                     skip_empty_lines: true,
                 }).reduce((map: { [key: string]: bigint }, obj: string[2]) => {
+                    if (good && map[obj[0]] !== undefined) {
+                        good = false;
+                        duplicate = obj[0];
+                    }
                     map[obj[0]] = toNano(obj[1]);
                     return map;
                 }, {});
             } catch (e) {
                 await bot.sendMessage(chatId, 'The uploaded CSV file is invalid. Please check the file and try again.');
+                return;
+            }
+            if (!good) {
+                await bot.sendMessage(
+                    chatId,
+                    'There should be no duplicate addresses to send Toncoin to\\. Address `' +
+                        duplicate! +
+                        '` appears multiple times\\.',
+                    { parse_mode: 'MarkdownV2' }
+                );
                 return;
             }
         } else {
@@ -219,6 +233,7 @@ async function main(): Promise<void> {
         const rawMessages = rawMessagesText.map((t) => t.split(': '));
 
         let messages: Msg[] = [];
+        let addressSet = new Set();
         for (let i = 0; i < rawMessages.length; i++) {
             const msg = rawMessages[i];
             const value = toNano(msg[1]);
@@ -229,6 +244,17 @@ async function main(): Promise<void> {
             var destination;
             try {
                 destination = Address.parse(msg[0]);
+                if (addressSet.has(msg[0])) {
+                    await bot.sendMessage(
+                        chatId,
+                        'There should be no duplicate addresses to send Toncoin to\\. Address `' +
+                            msg[0] +
+                            '` appears multiple times\\.',
+                        { parse_mode: 'MarkdownV2' }
+                    );
+                    return;
+                }
+                addressSet.add(msg[0]);
             } catch {
                 await bot.sendMessage(chatId, 'The address at position ' + (i + 1) + ' is invalid:\n"' + msg[0] + '"');
                 return;

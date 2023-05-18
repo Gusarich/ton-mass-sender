@@ -130,15 +130,30 @@ async function main(): Promise<void> {
         };
 
         if (msg.document!.file_name!.endsWith('.json')) {
+            var good = true;
             try {
                 rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
-                Object.keys(rawMessages).forEach((key) => {
-                    rawMessages[key] = toNano(rawMessages[key]);
+                Object.keys(rawMessages).forEach(async (key) => {
+                    if (typeof rawMessages[key] != typeof '') {
+                        good = false;
+                    } else {
+                        rawMessages[key] = toNano(rawMessages[key]);
+                    }
                 });
             } catch (e) {
                 await bot.sendMessage(
                     chatId,
                     'The uploaded JSON file is invalid. Please check the file and try again.'
+                );
+                return;
+            }
+            if (!good) {
+                await bot.sendMessage(
+                    chatId,
+                    'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
+                    {
+                        parse_mode: 'MarkdownV2',
+                    }
                 );
                 return;
             }

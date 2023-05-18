@@ -43,8 +43,22 @@ async function sendTransaction(messages: Msg[], chatId: number, provider: TonCon
             data,
         });
         await bot.sendMessage(chatId, 'Transaction sent!');
-        await bot.sendMessage(chatId, 'https://tonscan.org/address/' + address);
+        await bot.sendMessage(
+            chatId,
+            'You can explore all sent transactions by opening links below:\n[Tonscan](https://tonscan.org/address/' +
+                address +
+                ')\n[Tonviewer](https://tonviewer.com/' +
+                address +
+                ')\n[Ton Whales](https://tonwhales.com/explorer/address/' +
+                address +
+                ')',
+            {
+                parse_mode: 'MarkdownV2',
+                disable_web_page_preview: true,
+            }
+        );
     } catch (UserRejectsError) {
+        console.log(UserRejectsError);
         await bot.sendMessage(chatId, 'You rejected the transaction');
     }
 }

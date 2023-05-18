@@ -50,6 +50,11 @@ async function sendTransaction(messages: Msg[], chatId: number, provider: TonCon
 }
 
 async function processMessages(messages: Msg[], chatId: number) {
+    if (messages.length > 1300) {
+        await bot.sendMessage(chatId, 'Too many transactions. The limit is 1300.');
+        return;
+    }
+
     const provider = new TonConnectProvider(getConnector(chatId), 'Tonkeeper');
     await provider.restoreConnection();
 

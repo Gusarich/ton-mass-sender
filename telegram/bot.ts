@@ -89,6 +89,16 @@ async function processMessages(messages: Msg[], chatId: number) {
         toFile(filename, url, async () => {
             const msg = await bot.sendPhoto(chatId, filename, {
                 caption: 'Please scan this QR code using your Tonkeeper wallet.',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: 'Open Tonkeeper',
+                                url,
+                            },
+                        ],
+                    ],
+                },
             });
             await fs.promises.rm(filename);
             await provider.connect(async () => {

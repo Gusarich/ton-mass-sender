@@ -122,24 +122,31 @@ async function main(): Promise<void> {
             return;
         }
 
-        console.log(rawMessages);
-
         let messages: Msg[] = [];
-        for (const addr of Object.keys(rawMessages)) {
+        const addresses = Object.keys(rawMessages);
+        for (let i = 0; i < addresses.length; i++) {
+            const addr = addresses[i];
             if (rawMessages[addr] <= 0n) {
-                await bot.sendMessage(chatId, 'Invalid value: ' + fromNano(rawMessages[addr]));
+                await bot.sendMessage(chatId, 'Invalid value №' + (i + 1) + ': ' + fromNano(rawMessages[addr]));
+                return;
+            }
+            var destination;
+            try {
+                destination = Address.parse(addr);
+            } catch {
+                await bot.sendMessage(chatId, 'Invalid address №' + (i + 1) + ':\n"' + addr + '"');
                 return;
             }
             messages.push({
                 value: rawMessages[addr],
-                destination: Address.parse(addr),
+                destination,
             });
         }
         await processMessages(messages, chatId);
     });
 
     bot.onText(/.*/, async (msg) => {
-        if (!msg.text?.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm)) {
+        if (!msg.text?.match(/^([a-zA-Z0-9-_]+: -?\d+(\.\d+)?\n*)+$/g)) {
             await bot.sendMessage(
                 msg.chat.id,
                 'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me the list for sending either in \\.json or \\.csv file or in plain text\\.\n\nPlain text format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2`\n\nJSON format:\n`{\n    "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n    "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`\n\nCSV format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL, 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN, 1.2`',
@@ -150,23 +157,27 @@ async function main(): Promise<void> {
 
         const chatId = msg.chat.id;
 
-        const rawMessagesText = msg.text!.match(/^[a-zA-Z0-9-_]{48}: -?\d+(\.\d+)?$/gm);
-        if (rawMessagesText == null || rawMessagesText.length == 0) {
-            await bot.sendMessage(chatId, 'Wrong message format!');
-            return;
-        }
+        const rawMessagesText = msg.text!.split('\n');
         const rawMessages = rawMessagesText.map((t) => t.split(': '));
 
         let messages: Msg[] = [];
-        for (const msg of rawMessages) {
+        for (let i = 0; i < rawMessages.length; i++) {
+            const msg = rawMessages[i];
             const value = toNano(msg[1]);
             if (value <= 0) {
-                await bot.sendMessage(chatId, 'Invalid value: ' + msg[1]);
+                await bot.sendMessage(chatId, 'Invalid value №' + (i + 1) + ': ' + msg[1]);
+                return;
+            }
+            var destination;
+            try {
+                destination = Address.parse(msg[0]);
+            } catch {
+                await bot.sendMessage(chatId, 'Invalid address №' + (i + 1) + ':\n"' + msg[0] + '"');
                 return;
             }
             messages.push({
                 value,
-                destination: Address.parse(msg[0]),
+                destination,
             });
         }
 

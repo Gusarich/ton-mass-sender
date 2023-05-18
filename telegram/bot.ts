@@ -35,17 +35,17 @@ async function sendTransaction(messages: Msg[], chatId: number, provider: TonCon
         messages.map((msg) => msg.value).reduce((a, b) => a + b) +
         BigInt(messages.length + Math.ceil(messages.length / 254)) * toNano('0.1');
 
-    await bot.sendMessage(chatId, 'Confirm transaction in Tonkeeper');
+    await bot.sendMessage(chatId, 'Please confirm the transaction in your Tonkeeper wallet.');
 
     try {
         await provider.sendTransaction(address, value, undefined, {
             code,
             data,
         });
-        await bot.sendMessage(chatId, 'Transaction sent!');
+        await bot.sendMessage(chatId, 'Success! The transaction has been sent.');
         await bot.sendMessage(
             chatId,
-            'You can explore all sent transactions by opening links below:\n[Tonscan](https://tonscan.org/address/' +
+            'You can explore the details of your transactions by using the following links:\n[Tonscan](https://tonscan.org/address/' +
                 address +
                 ')\n[Tonviewer](https://tonviewer.com/' +
                 address +
@@ -59,13 +59,16 @@ async function sendTransaction(messages: Msg[], chatId: number, provider: TonCon
         );
     } catch (UserRejectsError) {
         console.log(UserRejectsError);
-        await bot.sendMessage(chatId, 'You rejected the transaction');
+        await bot.sendMessage(chatId, 'The transaction was rejected. If this was a mistake, please try again.');
     }
 }
 
 async function processMessages(messages: Msg[], chatId: number) {
     if (messages.length > 1300) {
-        await bot.sendMessage(chatId, 'Too many transactions. The limit is 1300.');
+        await bot.sendMessage(
+            chatId,
+            "You've exceeded the maximum transaction limit. Please limit your transactions to 1300 or less."
+        );
         return;
     }
 
@@ -73,22 +76,24 @@ async function processMessages(messages: Msg[], chatId: number) {
     await provider.restoreConnection();
 
     if (!provider.address()) {
-        await bot.sendMessage(chatId, 'Connect your Tonkeeper wallet');
+        await bot.sendMessage(chatId, 'Please connect your Tonkeeper wallet to proceed.');
 
         const url = await provider.getConnectUrl();
 
         if (url === undefined) {
-            await bot.sendMessage(chatId, 'Unknown error!');
+            await bot.sendMessage(chatId, 'Oops! An unknown error occurred. Please try again later.');
             return;
         }
 
         const filename = os.tmpdir() + 'qrcode' + Math.floor(Math.random() * 1e6).toString() + '.png';
         toFile(filename, url, async () => {
-            const msg = await bot.sendPhoto(chatId, filename, { caption: 'Scan this QR code with Tonkeeper' });
+            const msg = await bot.sendPhoto(chatId, filename, {
+                caption: 'Please scan this QR code using your Tonkeeper wallet.',
+            });
             await fs.promises.rm(filename);
             await provider.connect(async () => {
                 await bot.deleteMessage(chatId, msg.message_id);
-                await bot.sendMessage(chatId, 'Wallet connected!');
+                await bot.sendMessage(chatId, 'Success! Your Tonkeeper wallet is now connected.');
                 await sendTransaction(messages, chatId, provider);
             });
         });
@@ -103,7 +108,10 @@ async function main(): Promise<void> {
     bot.on('document', async (msg) => {
         const chatId = msg.chat.id;
         if (msg.document!.file_size! > TOO_BIG_FILE) {
-            await bot.sendMessage(chatId, 'File is too big. The limit is 1MB.');
+            await bot.sendMessage(
+                chatId,
+                'The file you uploaded is too large. Please ensure your file is less than 1MB.'
+            );
             return;
         }
 
@@ -118,7 +126,10 @@ async function main(): Promise<void> {
                     rawMessages[key] = toNano(rawMessages[key]);
                 });
             } catch (e) {
-                await bot.sendMessage(chatId, 'Invalid JSON! Please try again.');
+                await bot.sendMessage(
+                    chatId,
+                    'The uploaded JSON file is invalid. Please check the file and try again.'
+                );
                 return;
             }
         } else if (msg.document!.file_name!.endsWith('.csv')) {
@@ -130,13 +141,13 @@ async function main(): Promise<void> {
                     return map;
                 }, {});
             } catch (e) {
-                await bot.sendMessage(chatId, 'Invalid CSV! Please try again.');
+                await bot.sendMessage(chatId, 'The uploaded CSV file is invalid. Please check the file and try again.');
                 return;
             }
         } else {
             await bot.sendMessage(
                 chatId,
-                'Your file has unsupported extension. Make sure it is either `.json` or `.csv`.'
+                "The file type you uploaded isn't supported. Please ensure your file extension is either `.json` or `.csv`."
             );
             return;
         }
@@ -146,14 +157,17 @@ async function main(): Promise<void> {
         for (let i = 0; i < addresses.length; i++) {
             const addr = addresses[i];
             if (rawMessages[addr] <= 0n) {
-                await bot.sendMessage(chatId, 'Invalid value №' + (i + 1) + ': ' + fromNano(rawMessages[addr]));
+                await bot.sendMessage(
+                    chatId,
+                    'The value at position ' + (i + 1) + ' is invalid: ' + fromNano(rawMessages[addr])
+                );
                 return;
             }
             var destination;
             try {
                 destination = Address.parse(addr);
             } catch {
-                await bot.sendMessage(chatId, 'Invalid address №' + (i + 1) + ':\n"' + addr + '"');
+                await bot.sendMessage(chatId, 'The address at position ' + (i + 1) + ' is invalid:\n"' + addr + '"');
                 return;
             }
             messages.push({
@@ -168,7 +182,7 @@ async function main(): Promise<void> {
         if (!msg.text?.match(/^([a-zA-Z0-9-_]+: -?\d+(\.\d+)?\n*)+$/g)) {
             await bot.sendMessage(
                 msg.chat.id,
-                'Welcome to TON Mass Sender\\!\nUse me to send Toncoins to multiple addresses at once\\.\nYou can send me the list for sending either in \\.json or \\.csv file or in plain text\\.\n\nPlain text format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2`\n\nJSON format:\n`{\n    "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n    "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`\n\nCSV format:\n`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL, 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN, 1.2`',
+                `👋 Hello and welcome to the TON Mass Sender bot\\!\nI'm here to help you send Toncoin to multiple addresses at once\\. You can provide me with a list of addresses in one of the following formats:\n\n🔹 Plain text\\: You can send the address and value separated by a colon and a space, with each address on a new line\\. Example: \`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2\`\n\n🔹 JSON format\\: Send a JSON object where each key is an address and the corresponding value is the amount to be sent\\.\n\n🔹 CSV format\\: Send a CSV file where each row contains an address and the corresponding value separated by a comma\\.\n\nLet's get started\\!`,
                 { parse_mode: 'MarkdownV2' }
             );
             return;
@@ -184,14 +198,14 @@ async function main(): Promise<void> {
             const msg = rawMessages[i];
             const value = toNano(msg[1]);
             if (value <= 0) {
-                await bot.sendMessage(chatId, 'Invalid value №' + (i + 1) + ': ' + msg[1]);
+                await bot.sendMessage(chatId, 'The value at position ' + (i + 1) + ' is invalid: ' + msg[1]);
                 return;
             }
             var destination;
             try {
                 destination = Address.parse(msg[0]);
             } catch {
-                await bot.sendMessage(chatId, 'Invalid address №' + (i + 1) + ':\n"' + msg[0] + '"');
+                await bot.sendMessage(chatId, 'The address at position ' + (i + 1) + ' is invalid:\n"' + msg[0] + '"');
                 return;
             }
             messages.push({

@@ -176,7 +176,7 @@ async function main(): Promise<void> {
             if (!good) {
                 await bot.sendMessage(
                     chatId,
-                    'There should be no duplicate addresses to send Toncoin to\\. Address `' +
+                    'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
                         duplicate! +
                         '` appears multiple times\\.',
                     { parse_mode: 'MarkdownV2' }
@@ -247,7 +247,7 @@ async function main(): Promise<void> {
                 if (addressSet.has(msg[0])) {
                     await bot.sendMessage(
                         chatId,
-                        'There should be no duplicate addresses to send Toncoin to\\. Address `' +
+                        'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
                             msg[0] +
                             '` appears multiple times\\.',
                         { parse_mode: 'MarkdownV2' }

@@ -182,7 +182,7 @@ async function main(): Promise<void> {
         if (!msg.text?.match(/^([a-zA-Z0-9-_]+: -?\d+(\.\d+)?\n*)+$/g)) {
             await bot.sendMessage(
                 msg.chat.id,
-                `👋 Hello and welcome to the TON Mass Sender bot\\!\nI'm here to help you send Toncoin to multiple addresses at once\\. You can provide me with a list of addresses in one of the following formats:\n\n🔹 Plain text\\: You can send the address and value separated by a colon and a space, with each address on a new line\\. Example: \`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2\`\n\n🔹 JSON format\\: Send a JSON object where each key is an address and the corresponding value is the amount to be sent\\.\n\n🔹 CSV format\\: Send a CSV file where each row contains an address and the corresponding value separated by a comma\\.\n\nLet's get started\\!`,
+                `*👋 Hello and welcome to the TON Mass Sender bot\\!*\nI'm here to help you send Toncoin to multiple addresses at once\\. You can provide me with a list of addresses in one of the following formats:\n\n*🔹 Plain text*\\: You can send the address and value separated by a colon and a space, with each address on a new line\\. Example: \`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2\`\n\n*🔹 JSON format*\\: Send a JSON object where each key is an address and the corresponding value is the amount to be sent\\.\n\n*🔹 CSV format*\\: Send a CSV file where each row contains an address and the corresponding value separated by a comma\\.\n\nLet's get started\\!`,
                 { parse_mode: 'MarkdownV2' }
             );
             return;

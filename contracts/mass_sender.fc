@@ -50,7 +50,6 @@ const int ton_for_fee = 100000000;
     if (initiated == 0) {
         throw_if(101, total > msg_value - ton_for_fee * (length + (length + 253) / 254));
         initiated = 1;
-        admin = sender;
     } else {
         throw_unless(100, equal_slices(sender, my_address()) | equal_slices(sender, admin));
         accept_message();

@@ -19,6 +19,7 @@ export type Msg = {
 export type MassSenderConfig = {
     messages: Msg[];
     total?: bigint;
+    admin: Address;
 };
 
 function createMessageValue(): DictionaryValue<Msg> {
@@ -49,7 +50,7 @@ export function massSenderConfigToCell(config: MassSenderConfig): Cell {
         .storeUint(config.messages.length, 16)
         .storeUint(0, 16)
         .storeUint(0, 1)
-        .storeUint(0, 2)
+        .storeAddress(config.admin)
         .storeDict(messagesToDict(config.messages))
         .endCell();
 }

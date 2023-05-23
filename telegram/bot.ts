@@ -25,6 +25,7 @@ compile('MassSender').then((c) => {
 async function sendTransaction(messages: Msg[], chatId: number, provider: TonConnectProvider) {
     const data = massSenderConfigToCell({
         messages: messages,
+        admin: provider.address()!,
     });
 
     const address = contractAddress(0, {

@@ -32,6 +32,7 @@ describe('MassSender', () => {
             MassSender.createFromConfig(
                 {
                     messages: [{ value: toNano('1'), destination: randomAddresses[0] }],
+                    admin: deployer.address,
                 },
                 code
             )
@@ -55,6 +56,7 @@ describe('MassSender', () => {
             MassSender.createFromConfig(
                 {
                     messages: [{ value: toNano('0.1'), destination: deployer.address }],
+                    admin: deployer.address,
                 },
                 code
             )
@@ -81,6 +83,7 @@ describe('MassSender', () => {
                         value: toNano(idx + 1),
                         destination: addr,
                     })),
+                    admin: deployer.address,
                 },
                 code
             )
@@ -109,6 +112,7 @@ describe('MassSender', () => {
                         value: toNano(idx + 1),
                         destination: addr,
                     })),
+                    admin: deployer.address,
                 },
                 code
             )
@@ -137,6 +141,7 @@ describe('MassSender', () => {
                         value: toNano(idx + 1),
                         destination: addr,
                     })),
+                    admin: deployer.address,
                 },
                 code
             )
@@ -163,6 +168,7 @@ describe('MassSender', () => {
                 MassSender.createFromConfig(
                     {
                         messages: [msg],
+                        admin: deployer.address,
                     },
                     code
                 )
@@ -197,6 +203,7 @@ describe('MassSender', () => {
                         value: toNano(idx + 1),
                         destination: addr,
                     })),
+                    admin: deployer.address,
                 },
                 code
             )
@@ -225,6 +232,7 @@ describe('MassSender', () => {
                         destination: addr,
                     })),
                     total: 0n,
+                    admin: deployer.address,
                 },
                 code
             )

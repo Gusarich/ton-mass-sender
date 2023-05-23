@@ -7,6 +7,7 @@ export async function process(provider: NetworkProvider, messages: Msg[]) {
         MassSender.createFromConfig(
             {
                 messages,
+                admin: provider.sender().address!,
             },
             await compile('MassSender')
         )

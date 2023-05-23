@@ -22,6 +22,19 @@ compile('MassSender').then((c) => {
     Object.freeze(code);
 });
 
+class JsonError extends Error {
+    constructor() {
+        super('');
+        Object.setPrototypeOf(this, JsonError.prototype);
+    }
+}
+class CsvError extends Error {
+    constructor(public duplicate: string) {
+        super('');
+        Object.setPrototypeOf(this, CsvError.prototype);
+    }
+}
+
 async function sendTransaction(messages: Msg[], chatId: number, provider: TonConnectProvider) {
     const data = massSenderConfigToCell({
         messages: messages,
@@ -131,57 +144,56 @@ async function main(): Promise<void> {
         };
 
         if (msg.document!.file_name!.endsWith('.json')) {
-            var good = true;
             try {
                 rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
-                Object.keys(rawMessages).forEach(async (key) => {
-                    if (typeof rawMessages[key] != typeof '') {
-                        good = false;
-                    } else {
-                        rawMessages[key] = toNano(rawMessages[key]);
+                Object.keys(rawMessages).forEach((key) => {
+                    if (typeof rawMessages[key] != 'string') {
+                        throw new JsonError();
                     }
+                    rawMessages[key] = toNano(rawMessages[key]);
                 });
             } catch (e) {
-                await bot.sendMessage(
-                    chatId,
-                    'The uploaded JSON file is invalid. Please check the file and try again.'
-                );
-                return;
-            }
-            if (!good) {
-                await bot.sendMessage(
-                    chatId,
-                    'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
-                    { parse_mode: 'MarkdownV2' }
-                );
+                console.log(e, e instanceof JsonError);
+                if (e instanceof JsonError) {
+                    await bot.sendMessage(
+                        chatId,
+                        'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
+                        { parse_mode: 'MarkdownV2' }
+                    );
+                } else {
+                    await bot.sendMessage(
+                        chatId,
+                        'The uploaded JSON file is invalid. Please check the file and try again.'
+                    );
+                }
                 return;
             }
         } else if (msg.document!.file_name!.endsWith('.csv')) {
-            var good = true;
-            var duplicate: string;
             try {
                 rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
                     skip_empty_lines: true,
                 }).reduce((map: { [key: string]: bigint }, obj: string[2]) => {
-                    if (good && map[obj[0]] !== undefined) {
-                        good = false;
-                        duplicate = obj[0];
+                    if (map[obj[0]] !== undefined) {
+                        throw new CsvError(obj[0]);
                     }
                     map[obj[0]] = toNano(obj[1]);
                     return map;
                 }, {});
             } catch (e) {
-                await bot.sendMessage(chatId, 'The uploaded CSV file is invalid. Please check the file and try again.');
-                return;
-            }
-            if (!good) {
-                await bot.sendMessage(
-                    chatId,
-                    'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
-                        duplicate! +
-                        '` appears multiple times\\.',
-                    { parse_mode: 'MarkdownV2' }
-                );
+                if (e instanceof CsvError) {
+                    await bot.sendMessage(
+                        chatId,
+                        'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
+                            e.duplicate! +
+                            '` appears multiple times\\.',
+                        { parse_mode: 'MarkdownV2' }
+                    );
+                } else {
+                    await bot.sendMessage(
+                        chatId,
+                        'The uploaded CSV file is invalid. Please check the file and try again.'
+                    );
+                }
                 return;
             }
         } else {

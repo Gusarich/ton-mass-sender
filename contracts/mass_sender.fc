@@ -67,9 +67,15 @@ const int ton_for_fee = 100000000;
     }
     
     if (~ f?) {
+        save_data(seed, total, 0, 0, initiated, admin, messages);
         send_excesses(admin);
     } else {
         save_data(seed, total, length - 254, last_key - 1, initiated, admin, messages);
         send_transfer(my_address(), ton_for_fee);
     }
+}
+
+(int) has_finished () method_id {
+    (int seed, int total, int length, int last_key, int initiated, slice admin, cell messages) = load_data();
+    return (length == 0);
 }

@@ -11,6 +11,7 @@ import { initRedisClient } from './tonconnect/storage';
 import { toFile } from 'qrcode';
 import { getConnector } from './tonconnect/connector';
 import { parse } from 'csv-parse/sync';
+import path from 'path';
 
 const TOO_BIG_FILE = 1024 * 1024; // 1 megabyte
 
@@ -95,7 +96,7 @@ async function processMessages(messages: Msg[], chatId: number) {
             return;
         }
 
-        const filename = os.tmpdir() + 'qrcode' + Math.floor(Math.random() * 1e6).toString() + '.png';
+        const filename: string = path.join(os.tmpdir(), 'qrcode' + Math.floor(Math.random() * 1e6) + '.png');
         toFile(filename, url, async () => {
             const msg = await bot.sendPhoto(chatId, filename, {
                 caption: 'Please scan this QR code using your Tonkeeper wallet.',

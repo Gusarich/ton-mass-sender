@@ -130,155 +130,173 @@ async function main(): Promise<void> {
     Object.freeze(code);
 
     bot.on('document', async (msg) => {
-        const chatId = msg.chat.id;
-        if (msg.document!.file_size! > TOO_BIG_FILE) {
-            await bot.sendMessage(
-                chatId,
-                'The file you uploaded is too large. Please ensure your file is less than 1MB.'
-            );
-            return;
-        }
-
-        var rawMessages: {
-            [key: string]: bigint;
-        };
-
-        if (msg.document!.file_name!.endsWith('.json')) {
-            try {
-                rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
-                Object.keys(rawMessages).forEach((key) => {
-                    if (typeof rawMessages[key] != 'string') {
-                        throw new JsonError();
-                    }
-                    rawMessages[key] = toNano(rawMessages[key]);
-                });
-            } catch (e) {
-                console.log(e, e instanceof JsonError);
-                if (e instanceof JsonError) {
+        try {
+            await (async (msg) => {
+                const chatId = msg.chat.id;
+                if (msg.document!.file_size! > TOO_BIG_FILE) {
                     await bot.sendMessage(
                         chatId,
-                        'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
-                        { parse_mode: 'MarkdownV2' }
+                        'The file you uploaded is too large. Please ensure your file is less than 1MB.'
                     );
+                    return;
+                }
+
+                let rawMessages: {
+                    [key: string]: bigint;
+                };
+
+                if (msg.document!.file_name!.endsWith('.json')) {
+                    try {
+                        rawMessages = await (await fetch(await bot.getFileLink(msg.document!.file_id))).json();
+                        Object.keys(rawMessages).forEach((key) => {
+                            if (typeof rawMessages[key] != 'string') {
+                                throw new JsonError();
+                            }
+                            rawMessages[key] = toNano(rawMessages[key]);
+                        });
+                    } catch (e) {
+                        console.log(e, e instanceof JsonError);
+                        if (e instanceof JsonError) {
+                            await bot.sendMessage(
+                                chatId,
+                                'The values must be provided as strings\\. Example:\n`{\n  "EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL": "0.1",\n  "EQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN": "1.2"\n}`',
+                                { parse_mode: 'MarkdownV2' }
+                            );
+                        } else {
+                            await bot.sendMessage(
+                                chatId,
+                                'The uploaded JSON file is invalid. Please check the file and try again.'
+                            );
+                        }
+                        return;
+                    }
+                } else if (msg.document!.file_name!.endsWith('.csv')) {
+                    try {
+                        rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
+                            skip_empty_lines: true,
+                        }).reduce((map: { [key: string]: bigint }, obj: string[2]) => {
+                            if (map[obj[0]] !== undefined) {
+                                throw new CsvError(obj[0]);
+                            }
+                            map[obj[0]] = toNano(obj[1]);
+                            return map;
+                        }, {});
+                    } catch (e) {
+                        if (e instanceof CsvError) {
+                            await bot.sendMessage(
+                                chatId,
+                                'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
+                                    e.duplicate! +
+                                    '` appears multiple times\\.',
+                                { parse_mode: 'MarkdownV2' }
+                            );
+                        } else {
+                            await bot.sendMessage(
+                                chatId,
+                                'The uploaded CSV file is invalid. Please check the file and try again.'
+                            );
+                        }
+                        return;
+                    }
                 } else {
                     await bot.sendMessage(
                         chatId,
-                        'The uploaded JSON file is invalid. Please check the file and try again.'
+                        "The file type you uploaded isn't supported. Please ensure your file extension is either `.json` or `.csv`."
                     );
+                    return;
                 }
-                return;
-            }
-        } else if (msg.document!.file_name!.endsWith('.csv')) {
-            try {
-                rawMessages = parse(await (await fetch(await bot.getFileLink(msg.document!.file_id))).text(), {
-                    skip_empty_lines: true,
-                }).reduce((map: { [key: string]: bigint }, obj: string[2]) => {
-                    if (map[obj[0]] !== undefined) {
-                        throw new CsvError(obj[0]);
-                    }
-                    map[obj[0]] = toNano(obj[1]);
-                    return map;
-                }, {});
-            } catch (e) {
-                if (e instanceof CsvError) {
-                    await bot.sendMessage(
-                        chatId,
-                        'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
-                            e.duplicate! +
-                            '` appears multiple times\\.',
-                        { parse_mode: 'MarkdownV2' }
-                    );
-                } else {
-                    await bot.sendMessage(
-                        chatId,
-                        'The uploaded CSV file is invalid. Please check the file and try again.'
-                    );
-                }
-                return;
-            }
-        } else {
-            await bot.sendMessage(
-                chatId,
-                "The file type you uploaded isn't supported. Please ensure your file extension is either `.json` or `.csv`."
-            );
-            return;
-        }
 
-        let messages: Msg[] = [];
-        const addresses = Object.keys(rawMessages);
-        for (let i = 0; i < addresses.length; i++) {
-            const addr = addresses[i];
-            if (rawMessages[addr] <= 0n) {
-                await bot.sendMessage(
-                    chatId,
-                    'The value at position ' + (i + 1) + ' is invalid: ' + fromNano(rawMessages[addr])
-                );
-                return;
-            }
-            var destination;
-            try {
-                destination = Address.parse(addr);
-            } catch {
-                await bot.sendMessage(chatId, 'The address at position ' + (i + 1) + ' is invalid:\n"' + addr + '"');
-                return;
-            }
-            messages.push({
-                value: rawMessages[addr],
-                destination,
-            });
+                let messages: Msg[] = [];
+                const addresses = Object.keys(rawMessages);
+                for (let i = 0; i < addresses.length; i++) {
+                    const addr = addresses[i];
+                    if (rawMessages[addr] <= 0n) {
+                        await bot.sendMessage(
+                            chatId,
+                            'The value at position ' + (i + 1) + ' is invalid: ' + fromNano(rawMessages[addr])
+                        );
+                        return;
+                    }
+                    let destination;
+                    try {
+                        destination = Address.parse(addr);
+                    } catch {
+                        await bot.sendMessage(
+                            chatId,
+                            'The address at position ' + (i + 1) + ' is invalid:\n"' + addr + '"'
+                        );
+                        return;
+                    }
+                    messages.push({
+                        value: rawMessages[addr],
+                        destination,
+                    });
+                }
+                await processMessages(messages, chatId);
+            })(msg);
+        } catch (e) {
+            console.log(e);
         }
-        await processMessages(messages, chatId);
     });
 
     bot.onText(/.*/, async (msg) => {
-        if (!msg.text?.match(/^([a-zA-Z0-9-_]+: -?\d+(\.\d+)?\n*)+$/g)) {
-            await bot.sendMessage(
-                msg.chat.id,
-                `*👋 Hello and welcome to the TON Mass Sender bot\\!*\nI'm here to help you send Toncoin to multiple addresses at once\\. You can provide me with a list of addresses in one of the following formats:\n\n*🔹 Plain text*\\: You can send the address and value separated by a colon and a space, with each address on a new line\\. Example: \`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2\`\n\n*🔹 JSON format*\\: Send a JSON object where each key is an address and the corresponding value is the amount to be sent\\.\n\n*🔹 CSV format*\\: Send a CSV file where each row contains an address and the corresponding value separated by a comma\\.\n\nLet's get started\\!`,
-                { parse_mode: 'MarkdownV2' }
-            );
-            return;
-        }
-
-        const chatId = msg.chat.id;
-
-        const rawMessagesText = msg.text!.split('\n');
-        const rawMessages = rawMessagesText.filter((t) => t != '').map((t) => t.split(': '));
-
-        let messages: Msg[] = [];
-        let addressSet = new Set();
-        for (let i = 0; i < rawMessages.length; i++) {
-            const msg = rawMessages[i];
-            const value = toNano(msg[1]);
-            if (value <= 0) {
-                await bot.sendMessage(chatId, 'The value at position ' + (i + 1) + ' is invalid: ' + msg[1]);
-                return;
-            }
-            var destination;
-            try {
-                destination = Address.parse(msg[0]);
-                if (addressSet.has(msg[0])) {
+        try {
+            await (async (msg) => {
+                if (!msg.text?.match(/^([a-zA-Z0-9-_]+: -?\d+(\.\d+)?\n*)+$/g)) {
                     await bot.sendMessage(
-                        chatId,
-                        'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
-                            msg[0] +
-                            '` appears multiple times\\.',
+                        msg.chat.id,
+                        `*👋 Hello and welcome to the TON Mass Sender bot\\!*\nI'm here to help you send Toncoin to multiple addresses at once\\. You can provide me with a list of addresses in one of the following formats:\n\n*🔹 Plain text*\\: You can send the address and value separated by a colon and a space, with each address on a new line\\. Example: \`EQBIhPuWmjT7fP-VomuTWseE8JNWv2q7QYfsVQ1IZwnMk8wL: 0.1\nEQBKgXCNLPexWhs2L79kiARR1phGH1LwXxRbNsCFF9doc2lN: 1.2\`\n\n*🔹 JSON format*\\: Send a JSON object where each key is an address and the corresponding value is the amount to be sent\\.\n\n*🔹 CSV format*\\: Send a CSV file where each row contains an address and the corresponding value separated by a comma\\.\n\nLet's get started\\!`,
                         { parse_mode: 'MarkdownV2' }
                     );
                     return;
                 }
-                addressSet.add(msg[0]);
-            } catch {
-                await bot.sendMessage(chatId, 'The address at position ' + (i + 1) + ' is invalid:\n"' + msg[0] + '"');
-                return;
-            }
-            messages.push({
-                value,
-                destination,
-            });
-        }
 
-        await processMessages(messages, chatId);
+                const chatId = msg.chat.id;
+
+                const rawMessagesText = msg.text!.split('\n');
+                const rawMessages = rawMessagesText.filter((t) => t != '').map((t) => t.split(': '));
+
+                let messages: Msg[] = [];
+                let addressSet = new Set();
+                for (let i = 0; i < rawMessages.length; i++) {
+                    const msg = rawMessages[i];
+                    const value = toNano(msg[1]);
+                    if (value <= 0) {
+                        await bot.sendMessage(chatId, 'The value at position ' + (i + 1) + ' is invalid: ' + msg[1]);
+                        return;
+                    }
+                    let destination;
+                    try {
+                        destination = Address.parse(msg[0]);
+                        if (addressSet.has(msg[0])) {
+                            await bot.sendMessage(
+                                chatId,
+                                'To avoid confusion, please ensure there are no duplicate addresses to send Toncoin to\\. The address `' +
+                                    msg[0] +
+                                    '` appears multiple times\\.',
+                                { parse_mode: 'MarkdownV2' }
+                            );
+                            return;
+                        }
+                        addressSet.add(msg[0]);
+                    } catch {
+                        await bot.sendMessage(
+                            chatId,
+                            'The address at position ' + (i + 1) + ' is invalid:\n"' + msg[0] + '"'
+                        );
+                        return;
+                    }
+                    messages.push({
+                        value,
+                        destination,
+                    });
+                }
+
+                await processMessages(messages, chatId);
+            })(msg);
+        } catch (e) {
+            console.log(e);
+        }
     });
 }
 

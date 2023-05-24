@@ -87,4 +87,9 @@ export class MassSender implements Contract {
             body: Cell.EMPTY,
         });
     }
+
+    async getHasFinished(provider: ContractProvider): Promise<boolean> {
+        const stack = (await provider.get('has_finished', [])).stack;
+        return stack.readBoolean();
+    }
 }

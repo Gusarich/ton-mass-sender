@@ -49,6 +49,7 @@ describe('MassSender', () => {
             value: toNano('1'),
         });
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeTruthy();
     });
 
     it('should send one message to admin', async () => {
@@ -73,6 +74,7 @@ describe('MassSender', () => {
             value: toNano('0.1'),
         });
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeTruthy();
     });
 
     it('should send 254 messages', async () => {
@@ -102,6 +104,7 @@ describe('MassSender', () => {
             });
         }
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeTruthy();
     });
 
     it('should send 1400 messages', async () => {
@@ -131,6 +134,7 @@ describe('MassSender', () => {
             });
         }
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeTruthy();
     });
 
     it('should send 600 messages', async () => {
@@ -160,6 +164,7 @@ describe('MassSender', () => {
             });
         }
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeTruthy();
     });
 
     it('should send message several times', async () => {
@@ -185,6 +190,7 @@ describe('MassSender', () => {
                 value: msg.value,
             });
             expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+            expect(await massSender.getHasFinished()).toBeTruthy();
         }
 
         for (let i = 0; i < 15; ++i) {
@@ -221,6 +227,7 @@ describe('MassSender', () => {
             inMessageBounced: true,
         });
         expect((await blockchain.getContract(massSender.address)).balance).toEqual(0n);
+        expect(await massSender.getHasFinished()).toBeFalsy();
     });
 
     it('should continue sending after post-payment', async () => {
@@ -245,9 +252,11 @@ describe('MassSender', () => {
             actionResultCode: 37,
         });
         expect(result.transactions).toHaveLength(257);
+        expect(await massSender.getHasFinished()).toBeFalsy();
 
         result = await massSender.sendContinue(deployer.getSender(), toNano('150'));
         expect(result.transactions).toHaveLength(49);
+        expect(await massSender.getHasFinished()).toBeTruthy();
         for (let i = 254; i < 300; ++i) {
             expect(result.transactions).toHaveTransaction({
                 from: massSender.address,

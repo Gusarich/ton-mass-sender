@@ -16,11 +16,7 @@ const TOO_BIG_FILE = 1024 * 1024; // 1 megabyte
 
 const token = process.env.TELEGRAM_BOT_TOKEN!;
 const bot = new TelegramBot(token, { polling: true });
-var code: Cell;
-compile('MassSender').then((c) => {
-    code = c;
-    Object.freeze(code);
-});
+let code: Cell;
 
 class JsonError extends Error {
     constructor() {
@@ -128,6 +124,9 @@ async function processMessages(messages: Msg[], chatId: number) {
 
 async function main(): Promise<void> {
     await initRedisClient();
+
+    code = await compile('MassSender');
+    Object.freeze(code);
 
     bot.on('document', async (msg) => {
         const chatId = msg.chat.id;

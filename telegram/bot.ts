@@ -242,7 +242,7 @@ async function main(): Promise<void> {
         const chatId = msg.chat.id;
 
         const rawMessagesText = msg.text!.split('\n');
-        const rawMessages = rawMessagesText.map((t) => t.split(': '));
+        const rawMessages = rawMessagesText.filter((t) => t != '').map((t) => t.split(': '));
 
         let messages: Msg[] = [];
         let addressSet = new Set();
